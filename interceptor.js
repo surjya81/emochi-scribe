@@ -1,81 +1,41 @@
-// ============================================================
-// Emochi Chat Downloader — Page-Context Fetch Interceptor
-// Runs in MAIN world (declared in manifest) to bypass CSP.
-// Wraps window.fetch to capture the Bearer token the app uses,
-// then posts it to the content script via postMessage.
-// ============================================================
-
 (function () {
-  const TARGET = "emochi-backend-k8s.flowgpt.com";
-  const EXTRA_KEYS = [
-    "x-flow-app-version",
-    "x-flow-language",
-    "x-flow-platform-os",
-    "x-flow-timezone-offset",
-    "x-flow-userid",
-  ];
+  // 1. Intercept standard Fetch requests
+  const origFetch = window.fetch;
+  window.fetch = async function (...args) {
+    const reqUrl = args[0] instanceof Request ? args[0].url : (typeof args[0] === 'string' ? args[0] : '');
+    const response = await origFetch.apply(this, args);
 
-  const _origFetch = window.fetch.bind(window);
-
-  window.fetch = function (input, init) {
-    try {
-      const url =
-        typeof input === "string"
-          ? input
-          : input instanceof Request
-          ? input.url
-          : String(input);
-
-      if (url.includes(TARGET)) {
-        const rawHeaders = init?.headers ?? (input instanceof Request ? input.headers : null);
-        const token = extractToken(rawHeaders);
-        const extraHeaders = extractExtraHeaders(rawHeaders);
-
-        if (token) {
-          window.postMessage(
-            { type: "__EMOCHI_DL_TOKEN__", token, extraHeaders },
-            "*"
-          );
-        }
-      }
-    } catch (_) {
-      // Never break the page's fetch
+    if (reqUrl.includes('/conversation/latest') || reqUrl.includes('/conversation/sync')) {
+      try {
+        const clone = response.clone();
+        clone.json().then(data => {
+          window.postMessage({ type: '__EMOCHI_DL_DATA__', data }, '*');
+        }).catch(() => {});
+      } catch (err) {}
     }
-
-    return _origFetch(input, init);
+    return response;
   };
 
-  function extractToken(headers) {
-    if (!headers) return null;
-    const auth = getHeader(headers, "authorization");
-    if (!auth) return null;
-    return auth.replace(/^Bearer\s+/i, "").trim();
-  }
-
-  function extractExtraHeaders(headers) {
-    if (!headers) return {};
-    const out = {};
-    for (const k of EXTRA_KEYS) {
-      const v = getHeader(headers, k);
-      if (v) out[k] = v;
-    }
-    return out;
-  }
-
-  function getHeader(headers, name) {
-    if (typeof headers.get === "function") {
-      // Headers instance
-      return headers.get(name) || headers.get(name.toLowerCase()) || null;
-    }
-    if (Array.isArray(headers)) {
-      const pair = headers.find(([k]) => k.toLowerCase() === name.toLowerCase());
-      return pair ? pair[1] : null;
-    }
-    if (typeof headers === "object") {
-      for (const [k, v] of Object.entries(headers)) {
-        if (k.toLowerCase() === name.toLowerCase()) return v;
+  // 2. Intercept XMLHttpRequest (just in case they use older libraries)
+  const OrigXHR = window.XMLHttpRequest;
+  window.XMLHttpRequest = function() {
+    const xhr = new OrigXHR();
+    const origOpen = xhr.open;
+    xhr.open = function(method, url, ...rest) {
+      this._url = url;
+      return origOpen.apply(this, [method, url, ...rest]);
+    };
+    xhr.addEventListener('load', function() {
+      if (this._url && (this._url.includes('/conversation/latest') || this._url.includes('/conversation/sync'))) {
+        try {
+          if (this.responseType === '' || this.responseType === 'text') {
+            window.postMessage({ type: '__EMOCHI_DL_DATA__', data: JSON.parse(this.responseText) }, '*');
+          } else if (this.responseType === 'json') {
+            window.postMessage({ type: '__EMOCHI_DL_DATA__', data: this.response }, '*');
+          }
+        } catch(e) {}
       }
-    }
-    return null;
-  }
+    });
+    return xhr;
+  };
 })();
