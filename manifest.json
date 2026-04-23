@@ -1,0 +1,54 @@
+{
+  "manifest_version": 3,
+  "name": "Emochi Chat Downloader",
+  "version": "1.1.0",
+  "description": "Download your Emochi chat conversations as TXT, JSON, or Markdown files.",
+  "permissions": ["activeTab", "scripting", "downloads"],
+  "host_permissions": [
+    "https://emochi.com/*",
+    "https://*.emochi.com/*",
+    "https://emochi.ai/*",
+    "https://*.emochi.ai/*",
+    "https://emochi-backend-k8s.flowgpt.com/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://emochi.com/*",
+        "https://*.emochi.com/*",
+        "https://emochi.ai/*",
+        "https://*.emochi.ai/*"
+      ],
+      "js": ["interceptor.js"],
+      "world": "MAIN",
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://emochi.com/*",
+        "https://*.emochi.com/*",
+        "https://emochi.ai/*",
+        "https://*.emochi.ai/*"
+      ],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

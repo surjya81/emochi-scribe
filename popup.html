@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Emochi Chat Downloader</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      width: 280px;
+      background: #1a1a2e;
+      color: #e2d9f3;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 14px;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .header-icon { font-size: 22px; }
+
+    .header-text h1 {
+      font-size: 15px;
+      font-weight: 700;
+      color: white;
+    }
+
+    .header-text p {
+      font-size: 11px;
+      color: rgba(255,255,255,0.75);
+      margin-top: 1px;
+    }
+
+    .body { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+
+    /* Status banner */
+    #status-banner {
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 12px;
+      line-height: 1.5;
+      background: rgba(99,102,241,0.2);
+      color: #a5b4fc;
+    }
+    #status-banner.success { background: rgba(34,197,94,0.15); color: #86efac; }
+    #status-banner.warn    { background: rgba(234,179,8,0.15);  color: #fde047; }
+    #status-banner.error   { background: rgba(239,68,68,0.15);  color: #fca5a5; }
+
+    /* Format selector */
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 6px;
+    }
+
+    .format-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+
+    .fmt-btn {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: #9ca3af;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 8px 4px;
+      border-radius: 8px;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s;
+    }
+
+    .fmt-btn:hover {
+      background: rgba(168,85,247,0.2);
+      border-color: rgba(168,85,247,0.5);
+      color: #d8b4fe;
+    }
+
+    .fmt-btn.active {
+      background: rgba(124,58,237,0.35);
+      border-color: #7c3aed;
+      color: #e9d5ff;
+    }
+
+    /* Buttons */
+    .btn {
+      width: 100%;
+      padding: 10px;
+      border: none;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-scan {
+      background: rgba(255,255,255,0.07);
+      color: #c4b5fd;
+      border: 1px solid rgba(196,181,253,0.25);
+    }
+
+    .btn-scan:hover { background: rgba(255,255,255,0.12); }
+
+    .btn-dl {
+      background: linear-gradient(135deg, #7c3aed, #a855f7);
+      color: white;
+      box-shadow: 0 3px 12px rgba(124,58,237,0.35);
+    }
+
+    .btn-dl:hover:not(:disabled) {
+      background: linear-gradient(135deg, #6d28d9, #9333ea);
+    }
+
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .tip {
+      font-size: 11px;
+      color: #6b7280;
+      line-height: 1.5;
+      text-align: center;
+    }
+
+    /* Not on chat page */
+    #not-chat-page {
+      padding: 20px 16px;
+      text-align: center;
+      color: #6b7280;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    #not-chat-page a {
+      color: #a78bfa;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-icon">📥</div>
+    <div class="header-text">
+      <h1>Chat Downloader</h1>
+      <p>for Emochi.com</p>
+    </div>
+  </div>
+
+  <div id="main-ui" class="body" style="display:none">
+    <div id="status-banner">Click Scan to detect messages.</div>
+
+    <div>
+      <div class="section-label">Export Format</div>
+      <div class="format-grid">
+        <button class="fmt-btn active" data-fmt="txt">.TXT</button>
+        <button class="fmt-btn" data-fmt="md">.MD</button>
+        <button class="fmt-btn" data-fmt="json">.JSON</button>
+      </div>
+    </div>
+
+    <button class="btn btn-scan" id="scan-btn">🔍 Scan Chat Messages</button>
+    <button class="btn btn-dl" id="dl-btn" disabled>⬇ Download Chat</button>
+
+    <p class="tip">Scroll through the chat first to load all messages, then scan.</p>
+  </div>
+
+  <div id="not-chat-page" style="display:none">
+    <p>🤖 Navigate to an Emochi chat to use this extension.</p>
+    <br/>
+    <a href="https://emochi.com" target="_blank">Go to Emochi →</a>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

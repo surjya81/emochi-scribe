@@ -1,0 +1,218 @@
+/* ============================================================
+   Emochi Chat Downloader — Floating Panel Styles
+   ============================================================ */
+
+#emochi-dl-root {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 2147483647;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+}
+
+/* ── Toggle Button ─────────────────────────────────────── */
+#emochi-dl-toggle {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 20px rgba(124, 58, 237, 0.45);
+  transition: transform 0.2s, box-shadow 0.2s;
+  color: white;
+  z-index: 1;
+}
+
+#emochi-dl-toggle:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 28px rgba(124, 58, 237, 0.6);
+}
+
+#emochi-dl-toggle svg {
+  width: 22px;
+  height: 22px;
+}
+
+/* ── Panel ─────────────────────────────────────────────── */
+.emochi-panel {
+  position: absolute;
+  bottom: 62px;
+  right: 0;
+  width: 300px;
+  background: #1a1a2e;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  border-radius: 16px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  transform-origin: bottom right;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s;
+}
+
+.emochi-panel.collapsed #emochi-dl-body {
+  display: none;
+}
+
+/* ── Header ────────────────────────────────────────────── */
+.emochi-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.emochi-logo {
+  font-size: 18px;
+}
+
+.emochi-title {
+  flex: 1;
+  font-weight: 700;
+  color: #e2d9f3;
+  font-size: 15px;
+}
+
+#emochi-dl-close {
+  background: none;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  transition: background 0.15s, color 0.15s;
+}
+
+#emochi-dl-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+/* ── Body ──────────────────────────────────────────────── */
+#emochi-dl-body {
+  padding: 14px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.emochi-char {
+  color: #c084fc;
+  font-weight: 600;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Status ────────────────────────────────────────────── */
+.emochi-status {
+  font-size: 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+}
+
+.emochi-status.info    { background: rgba(99,102,241,0.18); color: #a5b4fc; }
+.emochi-status.success { background: rgba(34,197,94,0.15);  color: #86efac; }
+.emochi-status.warn    { background: rgba(234,179,8,0.15);   color: #fde047; }
+.emochi-status.error   { background: rgba(239,68,68,0.15);   color: #fca5a5; }
+
+/* ── Format Selector ───────────────────────────────────── */
+.emochi-format-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.emochi-format-label {
+  color: #9ca3af;
+  font-size: 12px;
+  font-weight: 500;
+  min-width: 48px;
+}
+
+.emochi-format-btns {
+  display: flex;
+  gap: 6px;
+}
+
+.fmt-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #9ca3af;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 11px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.fmt-btn:hover {
+  background: rgba(168, 85, 247, 0.2);
+  border-color: rgba(168, 85, 247, 0.5);
+  color: #d8b4fe;
+}
+
+.fmt-btn.active {
+  background: rgba(124, 58, 237, 0.35);
+  border-color: #7c3aed;
+  color: #e9d5ff;
+}
+
+/* ── Action Buttons ────────────────────────────────────── */
+.emochi-action-btn {
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.emochi-action-btn.secondary {
+  background: rgba(255, 255, 255, 0.07);
+  color: #c4b5fd;
+  border: 1px solid rgba(196, 181, 253, 0.25);
+}
+
+.emochi-action-btn.secondary:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.emochi-action-btn.primary {
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  color: white;
+  box-shadow: 0 3px 12px rgba(124, 58, 237, 0.35);
+}
+
+.emochi-action-btn.primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #6d28d9, #9333ea);
+  box-shadow: 0 4px 18px rgba(124, 58, 237, 0.5);
+}
+
+.emochi-action-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── Tip ───────────────────────────────────────────────── */
+.emochi-tip {
+  font-size: 11px;
+  color: #6b7280;
+  line-height: 1.5;
+  padding-top: 2px;
+}
