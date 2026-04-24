@@ -194,7 +194,7 @@
         </button>
         <div id="emochi-dl-body">
           <div class="emochi-header">
-            <span class="emochi-title">Chat Downloader</span>
+            <span class="emochi-title">Emochi Scribe</span>
             <button id="emochi-dl-close">✕</button>
           </div>
           <div id="emochi-dl-char-name" class="emochi-char">${getCharacterName()}</div>

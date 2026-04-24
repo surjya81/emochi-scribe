@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Emochi Chat Downloader",
+  "name": "Emochi Scribe",
   "version": "3.1.0",
   "description": "Download your Emochi chat conversations.",
   "permissions":["activeTab", "scripting", "downloads"],
