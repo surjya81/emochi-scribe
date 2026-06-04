@@ -1,12 +1,13 @@
 {
   "manifest_version": 3,
   "name": "Emochi Scribe",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "description": "Download your Emochi chat conversations.",
-  "permissions":["activeTab", "scripting", "downloads"],
-  "host_permissions":[
+  "permissions": ["activeTab", "scripting", "downloads"],
+  "host_permissions": [
     "https://emochi.com/*",
-    "https://*.emochi.com/*"
+    "https://*.emochi.com/*",
+    "https://*.flowgpt.com/*"
   ],
   "icons": {
     "16": "icons/icon16.png",
@@ -23,15 +24,15 @@
   },
   "content_scripts": [
     {
-      "matches":["https://emochi.com/*", "https://*.emochi.com/*"],
-      "js":["interceptor.js"],
+      "matches": ["https://emochi.com/*", "https://*.emochi.com/*"],
+      "js": ["interceptor.js"],
       "world": "MAIN",
       "run_at": "document_start"
     },
     {
-      "matches":["https://emochi.com/*", "https://*.emochi.com/*"],
-      "js": ["content.js"],
-      "css":["content.css"],
+      "matches": ["https://emochi.com/*", "https://*.emochi.com/*"],
+      "js": ["jszip.min.js", "content.js"],
+      "css": ["content.css"],
       "run_at": "document_idle"
     }
   ]
