@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Emochi Scribe",
   "version": "3.2.0",
-  "description": "Download your Emochi chat conversations.",
+  "description": "Download your Emochi chat conversations and image galleries.",
   "permissions": ["activeTab", "scripting", "downloads"],
   "host_permissions": [
     "https://emochi.com/*",
