@@ -9,18 +9,15 @@
   let autoScrollTimer = null;
   let selectedFormat = "txt";
   let selectedGalleryScope = "all";
-  let activeScrollMode = "chat";
-  let noNewItemsCount = 0;
-  let lastCapturedCount = 0;
+  let noNewMessagesCount = 0;
+  let lastMessageCount = 0;
   let cachedScrollTarget = null;
   let isChatDownloadRunning = false;
   let isGalleryDownloadRunning = false;
 
   // --- 1. DATA RECEIVERS ---
-  window.addEventListener("message", (event) => {
-    if (event.source !== window || event.data?.type !== "__EMOCHI_DL_DATA__") return;
-
-    const payload = event.data.data;
+  document.addEventListener("__EMOCHI_DL_DATA__", (event) => {
+    const payload = event.detail;
     const body = payload?.body || payload;
     const messages = body?.data?.messages || body?.messages || [];
     const images = body?.data?.images || body?.images || [];
@@ -72,7 +69,7 @@
     });
 
     if (changed) {
-      noNewItemsCount = 0;
+      noNewMessagesCount = 0;
       updateUI();
     }
   }
@@ -107,7 +104,6 @@
     });
 
     if (changed) {
-      noNewItemsCount = 0;
       updateUI();
     }
   }
@@ -192,7 +188,7 @@
   }
 
   function isGalleryPage() {
-    return location.pathname === "/me" && new URLSearchParams(location.search).get("tab") === "gallery";
+    return location.pathname.includes("/me") && new URLSearchParams(location.search).get("tab") === "gallery";
   }
 
   function getRawImageUrl(url) {
@@ -207,11 +203,9 @@
 
   function formatDuration(ms) {
     if (!Number.isFinite(ms) || ms < 0) return "calculating";
-
     const totalSeconds = Math.max(1, Math.round(ms / 1000));
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
-
     if (minutes === 0) return `${seconds}s`;
     return `${minutes}m ${String(seconds).padStart(2, "0")}s`;
   }
@@ -222,64 +216,7 @@
     const elapsed = Date.now() - startedAt;
     const eta = completed > 0 ? formatDuration((elapsed / completed) * (total - completed)) : "calculating";
     const failedText = failed > 0 ? `, ${failed} failed` : "";
-
     return `${prefix}: ${completed}/${total} (${percent}%). ETA ${eta}${failedText}`;
-  }
-
-  function hasGalleryLoadError() {
-    return document.body?.innerText?.includes("Failed to load gallery. Please try again.") === true;
-  }
-
-  function isLeftSidebarElement(el) {
-    const rect = el.getBoundingClientRect();
-    const sidebarBoundary = Math.max(280, window.innerWidth * 0.18);
-
-    if (el.closest("aside, nav")) return true;
-    if (rect.right <= sidebarBoundary) return true;
-    if (rect.left < sidebarBoundary && rect.width < 340) return true;
-
-    return false;
-  }
-
-  function isLikelyGalleryScrollTarget(el) {
-    const rect = el.getBoundingClientRect();
-
-    if (el.id === "emochi-dl-root" || el.closest("#emochi-dl-root")) return false;
-    if (isLeftSidebarElement(el)) return false;
-    if (rect.width < 360 || rect.height < 220) return false;
-    if (rect.right < window.innerWidth * 0.45) return false;
-
-    return true;
-  }
-
-  function getScrollableContainers(mode = "any") {
-    return Array.from(document.querySelectorAll("main, section, div"))
-      .filter(el => {
-        const style = window.getComputedStyle(el);
-        const canScroll = style.overflowY === "auto" || style.overflowY === "scroll";
-        if (!canScroll || el.scrollHeight <= el.clientHeight + 20) return false;
-        if (mode === "gallery" && !isLikelyGalleryScrollTarget(el)) return false;
-        return true;
-      })
-      .sort((a, b) => b.scrollHeight - a.scrollHeight);
-  }
-
-  function scrollGalleryDown() {
-    const amount = Math.max(280, Math.floor(window.innerHeight * 0.45));
-    const targets = getScrollableContainers("gallery").slice(0, 2);
-    const wheelInit = {
-      deltaY: amount,
-      bubbles: true,
-      cancelable: true
-    };
-
-    window.scrollBy({ top: amount, behavior: "smooth" });
-    window.dispatchEvent(new WheelEvent("wheel", wheelInit));
-
-    targets.forEach(target => {
-      target.scrollBy({ top: amount, behavior: "smooth" });
-      target.dispatchEvent(new WheelEvent("wheel", wheelInit));
-    });
   }
 
   async function fetchMediaIntoZip(zip, mediaQueue, statusPrefix) {
@@ -338,7 +275,7 @@
     return { total: mediaQueue.length, completed, failed };
   }
 
-  async function executeDownload(format, useZip) {
+  async function executeDownload(format, useZip, exportAll) {
     if (messageStore.size === 0 || isChatDownloadRunning) return;
 
     isChatDownloadRunning = true;
@@ -356,25 +293,31 @@
         statusEl.className = "emochi-status info";
       }
 
-      let content;
-      let filename;
-      let mime;
-
-      if (format === "txt") {
-        content = formatTxt(messages, charName);
-        filename = `emochi_${safeName}.txt`;
-        mime = "text/plain";
-      } else if (format === "md") {
-        content = formatMd(messages, charName);
-        filename = `emochi_${safeName}.md`;
-        mime = "text/markdown";
-      } else {
-        content = formatJson(messages, charName);
-        filename = `emochi_${safeName}.json`;
-        mime = "application/json";
+      if ((exportAll || useZip) && typeof JSZip === "undefined") {
+        console.error("[Emochi Scribe] JSZip library not found.");
+        if (statusEl) {
+          statusEl.textContent = "JSZip is not available. Try refreshing the page.";
+          statusEl.className = "emochi-status error";
+        }
+        return;
       }
 
-      if (!useZip) {
+      if (!exportAll && !useZip) {
+        let content, filename, mime;
+        if (format === "txt") {
+          content = formatTxt(messages, charName);
+          filename = `emochi_${safeName}.txt`;
+          mime = "text/plain";
+        } else if (format === "md") {
+          content = formatMd(messages, charName);
+          filename = `emochi_${safeName}.md`;
+          mime = "text/markdown";
+        } else {
+          content = formatJson(messages, charName);
+          filename = `emochi_${safeName}.json`;
+          mime = "application/json";
+        }
+
         downloadFile(content, filename, mime);
         if (statusEl) {
           statusEl.textContent = "Download complete.";
@@ -383,37 +326,51 @@
         return;
       }
 
-      if (typeof JSZip === "undefined") {
-        console.error("[Emochi Scribe] JSZip library not found. Falling back to standard download.");
-        downloadFile(content, filename, mime);
-        return;
-      }
-
       const zip = new JSZip();
       const mediaQueue = [];
-      zip.file(filename, content);
 
-      const avatarEl = document.querySelector('img[alt="thumbnail"]');
-      if (avatarEl?.src) {
-        const rawImgUrl = getRawImageUrl(avatarEl.src);
-        const ext = getUrlExtension(rawImgUrl);
-        mediaQueue.push({ url: rawImgUrl, name: `avatar_${safeName}.${ext}` });
+      if (exportAll) {
+        zip.file(`emochi_${safeName}.txt`, formatTxt(messages, charName));
+        zip.file(`emochi_${safeName}.md`, formatMd(messages, charName));
+        zip.file(`emochi_${safeName}.json`, formatJson(messages, charName));
+      } else {
+        let content, filename;
+        if (format === "txt") {
+          content = formatTxt(messages, charName);
+          filename = `emochi_${safeName}.txt`;
+        } else if (format === "md") {
+          content = formatMd(messages, charName);
+          filename = `emochi_${safeName}.md`;
+        } else {
+          content = formatJson(messages, charName);
+          filename = `emochi_${safeName}.json`;
+        }
+        zip.file(filename, content);
       }
 
-      messages.forEach((message, messageIndex) => {
-        if (!Array.isArray(message.images)) return;
+      if (useZip) {
+        const avatarEl = document.querySelector('img[alt="thumbnail"]');
+        if (avatarEl?.src) {
+          const rawImgUrl = getRawImageUrl(avatarEl.src);
+          const ext = getUrlExtension(rawImgUrl);
+          mediaQueue.push({ url: rawImgUrl, name: `avatar_${safeName}.${ext}` });
+        }
 
-        message.images.forEach((imageUrl, imageIndex) => {
-          const rawUrl = getRawImageUrl(imageUrl);
-          const ext = getUrlExtension(rawUrl);
-          mediaQueue.push({
-            url: rawUrl,
-            name: `images/msg_${String(messageIndex + 1).padStart(3, "0")}_img_${imageIndex + 1}.${ext}`
+        messages.forEach((message, messageIndex) => {
+          if (!Array.isArray(message.images)) return;
+
+          message.images.forEach((imageUrl, imageIndex) => {
+            const rawUrl = getRawImageUrl(imageUrl);
+            const ext = getUrlExtension(rawUrl);
+            mediaQueue.push({
+              url: rawUrl,
+              name: `images/msg_${String(messageIndex + 1).padStart(3, "0")}_img_${imageIndex + 1}.${ext}`
+            });
           });
         });
-      });
 
-      await fetchMediaIntoZip(zip, mediaQueue, "Fetching media");
+        await fetchMediaIntoZip(zip, mediaQueue, "Fetching media");
+      }
 
       if (statusEl) {
         statusEl.textContent = "Zipping files: 0%";
@@ -469,8 +426,6 @@
     updateDownloadButtons();
 
     try {
-      if (autoScrollTimer) toggleAutoScroll();
-
       if (statusEl) {
         statusEl.textContent = `Preparing ${images.length} gallery images...`;
         statusEl.className = "emochi-status info";
@@ -543,7 +498,13 @@
     }
   }
 
-  // --- 3. UI INTEGRATION & AUTO SCROLL ---
+  function getScrollableContainers() {
+    return Array.from(document.querySelectorAll("div")).filter(el => {
+      const style = window.getComputedStyle(el);
+      return (style.overflowY === "auto" || style.overflowY === "scroll") && el.scrollHeight > el.clientHeight;
+    }).sort((a, b) => b.scrollHeight - a.scrollHeight);
+  }
+
   function toggleAutoScroll() {
     const btn = document.getElementById("emochi-dl-autoscroll");
 
@@ -554,59 +515,49 @@
       return false;
     }
 
-    activeScrollMode = isGalleryPage() ? "gallery" : "chat";
     if (btn) btn.textContent = "Stop Auto-Scroll";
-    noNewItemsCount = 0;
-    lastCapturedCount = activeScrollMode === "gallery" ? galleryStore.size : messageStore.size;
+    noNewMessagesCount = 0;
+    lastMessageCount = isGalleryPage() ? galleryStore.size : messageStore.size;
     cachedScrollTarget = null;
 
-    const intervalMs = activeScrollMode === "gallery" ? 2600 : 1500;
-
     autoScrollTimer = setInterval(() => {
-      const currentCount = activeScrollMode === "gallery" ? galleryStore.size : messageStore.size;
-      const stallLimit = activeScrollMode === "gallery" ? 8 : 4;
+      const currentSize = isGalleryPage() ? galleryStore.size : messageStore.size;
 
-      if (activeScrollMode === "gallery" && hasGalleryLoadError()) {
-        toggleAutoScroll();
-        const status = document.getElementById("emochi-dl-status");
-        if (status) {
-          status.textContent = "Gallery load failed on Emochi. Auto-scroll stopped; wait a moment, then retry.";
-          status.className = "emochi-status warn";
-        }
-        return;
-      }
-
-      if (currentCount === lastCapturedCount) {
-        noNewItemsCount++;
-        if (noNewItemsCount >= stallLimit) {
+      if (currentSize === lastMessageCount) {
+        noNewMessagesCount++;
+        // Wait ~9 seconds (6 loops) to ensure no rate-limits block us
+        if (noNewMessagesCount >= 6) {
           toggleAutoScroll();
           updateUI(true);
           return;
         }
       } else {
-        lastCapturedCount = currentCount;
-        noNewItemsCount = 0;
-      }
-
-      if (activeScrollMode === "gallery") {
-        scrollGalleryDown();
-        return;
+        lastMessageCount = currentSize;
+        noNewMessagesCount = 0;
       }
 
       if (!cachedScrollTarget || !document.body.contains(cachedScrollTarget)) {
         const containers = getScrollableContainers();
-        containers.sort((a, b) => b.scrollHeight - a.scrollHeight);
         cachedScrollTarget = containers.length > 0 ? containers[0] : window;
       }
 
-      if (cachedScrollTarget === window) {
-        window.scrollTo(0, 15);
-        setTimeout(() => window.scrollTo(0, 0), 50);
+      if (isGalleryPage()) {
+        // Gallery logic: Safely scroll DOWNwards
+        if (cachedScrollTarget === window) {
+          window.scrollBy(0, 2000);
+        } else {
+          cachedScrollTarget.scrollTop += 2000;
+        }
       } else {
-        cachedScrollTarget.scrollTop = 15;
-        setTimeout(() => cachedScrollTarget.scrollTop = 0, 50);
+        // Chat logic: Only set scrollTop to 0 if we aren't already at 0. 
+        // This naturally throttles itself and prevents HTTP 429 rate limit spamming.
+        if (cachedScrollTarget === window) {
+          if (window.scrollY > 0) window.scrollTo(0, 0);
+        } else {
+          if (cachedScrollTarget.scrollTop > 0) cachedScrollTarget.scrollTop = 0;
+        }
       }
-    }, intervalMs);
+    }, 1500);
 
     return true;
   }
@@ -639,10 +590,14 @@
             </div>
           </div>
 
-          <div style="margin: 4px 0 10px 0;">
+          <div style="margin: 4px 0 10px 0; display: flex; flex-direction: column; gap: 6px;">
             <label style="font-size: 12px; color: #d8b4fe; cursor: pointer; display: flex; align-items: center; gap: 6px;">
               <input type="checkbox" id="emochi-dl-zip-check" checked style="accent-color: #a855f7; cursor: pointer;">
               Include In-Chat Images & Avatar (.ZIP)
+            </label>
+            <label style="font-size: 12px; color: #d8b4fe; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+              <input type="checkbox" id="emochi-dl-all-check" style="accent-color: #a855f7; cursor: pointer;">
+              Bundle .TXT, .MD, and .JSON in one ZIP
             </label>
           </div>
 
@@ -683,7 +638,8 @@
 
     root.querySelector("#emochi-dl-download").onclick = () => {
       const useZip = document.getElementById("emochi-dl-zip-check").checked;
-      executeDownload(selectedFormat, useZip);
+      const exportAll = document.getElementById("emochi-dl-all-check").checked;
+      executeDownload(selectedFormat, useZip, exportAll);
     };
 
     root.querySelector("#emochi-gallery-download").onclick = () => {
@@ -694,7 +650,7 @@
     updateUI();
   }
 
-  function updateUI(reachedBoundary = false) {
+  function updateUI(reachedTop = false) {
     const status = document.getElementById("emochi-dl-status");
     const allGalleryCount = galleryStore.size;
     const favoriteGalleryCount = getGalleryImages("favorites").length;
@@ -706,8 +662,7 @@
 
     if (isGalleryPage()) {
       if (allGalleryCount > 0) {
-        const prefix = reachedBoundary && activeScrollMode === "gallery" ? "Reached bottom. " : "";
-        status.textContent = `${prefix}Gallery: ${allGalleryCount} images, ${favoriteGalleryCount} favorites.`;
+        status.textContent = `Gallery: ${allGalleryCount} images, ${favoriteGalleryCount} favorites.`;
         status.className = "emochi-status success";
       } else {
         status.textContent = "Scroll the gallery to begin recording images.";
@@ -717,8 +672,7 @@
     }
 
     if (messageStore.size > 0) {
-      const prefix = reachedBoundary && activeScrollMode === "chat" ? "Reached top. " : "";
-      status.textContent = `${prefix}Recorded ${messageStore.size} messages.`;
+      status.textContent = reachedTop ? `Reached end of history. Total: ${messageStore.size} messages.` : `Recorded ${messageStore.size} messages.`;
       status.className = "emochi-status success";
     } else if (allGalleryCount > 0) {
       status.textContent = `Gallery recorded: ${allGalleryCount} images, ${favoriteGalleryCount} favorites.`;
@@ -763,7 +717,7 @@
       const isRunning = toggleAutoScroll();
       sendResponse({ isScrolling: isRunning });
     } else if (msg.action === "trigger_download") {
-      executeDownload(msg.format || selectedFormat, msg.useZip);
+      executeDownload(msg.format || selectedFormat, msg.useZip, msg.exportAll);
       sendResponse({ success: true });
     } else if (msg.action === "trigger_gallery_download") {
       executeGalleryDownload(msg.scope || selectedGalleryScope);
@@ -774,5 +728,5 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", createPanel);
   else createPanel();
 
-  window.postMessage({ type: "__EMOCHI_DL_READY__" }, "*");
+  document.dispatchEvent(new CustomEvent("__EMOCHI_DL_READY__"));
 })();

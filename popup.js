@@ -10,6 +10,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const fmtBtns = document.querySelectorAll(".fmt-btn");
   const chatFormatSection = document.querySelector(".format-grid")?.parentElement;
 
+  // Hide the old unused scan button if it exists
   if (scanBtn) scanBtn.style.display = "none";
 
   fmtBtns.forEach(btn => {
@@ -20,22 +21,29 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
+  // Inject Chat Download Options (.ZIP & Bundle)
   const optionsContainer = document.createElement("div");
-  optionsContainer.style.cssText = "margin-top: 12px; margin-bottom: 12px;";
+  optionsContainer.style.cssText = "margin-top: 12px; margin-bottom: 12px; display: flex; flex-direction: column; gap: 8px;";
   optionsContainer.innerHTML = `
     <label style="font-size: 12px; color: #d8b4fe; cursor: pointer; display: flex; align-items: center; gap: 6px; font-weight: 600;">
       <input type="checkbox" id="popup-zip-check" checked style="accent-color: #a855f7; cursor: pointer; width: 14px; height: 14px;">
       Include In-Chat Images & Avatar (.ZIP)
     </label>
+    <label style="font-size: 12px; color: #d8b4fe; cursor: pointer; display: flex; align-items: center; gap: 6px; font-weight: 600;">
+      <input type="checkbox" id="popup-all-check" style="accent-color: #a855f7; cursor: pointer; width: 14px; height: 14px;">
+      Bundle .TXT, .MD, and .JSON in one ZIP
+    </label>
   `;
   if (dlBtn?.parentNode) dlBtn.parentNode.insertBefore(optionsContainer, dlBtn);
 
+  // Inject Auto-Scroll Button
   const autoScrollBtn = document.createElement("button");
   autoScrollBtn.id = "popup-autoscroll-btn";
   autoScrollBtn.textContent = "Start Auto-Scroll";
-  autoScrollBtn.style.cssText = "width: 100%; padding: 10px; margin-bottom: 10px; background: #6b7280; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;";
+  autoScrollBtn.style.cssText = "display: none; width: 100%; padding: 10px; margin-bottom: 10px; background: #6b7280; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;";
   if (dlBtn?.parentNode) dlBtn.parentNode.insertBefore(autoScrollBtn, dlBtn);
 
+  // Inject Gallery Download UI
   const galleryContainer = document.createElement("div");
   galleryContainer.style.cssText = "display: none; flex-direction: column; gap: 8px;";
   galleryContainer.innerHTML = `
@@ -71,7 +79,8 @@ document.addEventListener("DOMContentLoaded", () => {
       const url = new URL(tabUrl);
       if (url.hostname !== "emochi.com" && !url.hostname.endsWith(".emochi.com")) return "other";
       if (/^\/character\/.+\/chat/.test(url.pathname)) return "chat";
-      if (url.pathname === "/me" && url.searchParams.get("tab") === "gallery") return "gallery";
+      // Allow for variation in the gallery path
+      if (url.pathname.includes("/me") && url.searchParams.get("tab") === "gallery") return "gallery";
       return "other";
     } catch (err) {
       return "other";
@@ -100,8 +109,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
     mainUI.style.display = "flex";
     if (notChatPage) notChatPage.style.display = "none";
-    if (pageKind === "gallery") galleryContainer.style.display = "flex";
 
+    // Show Auto-Scroll button for BOTH Chat and Gallery pages
+    if (pageKind === "chat" || pageKind === "gallery") {
+      autoScrollBtn.style.display = "block";
+    }
+
+    // Configure layout for Gallery Page vs Chat Page
     if (pageKind === "gallery") {
       if (dlBtn) dlBtn.style.display = "none";
       optionsContainer.style.display = "none";
@@ -109,16 +123,20 @@ document.addEventListener("DOMContentLoaded", () => {
       galleryContainer.style.display = "flex";
     }
 
-    autoScrollBtn.addEventListener("click", () => {
-      chrome.tabs.sendMessage(tab.id, { action: "toggle_scroll" }, response => {
-        if (chrome.runtime.lastError) {
-          setStatus("Please refresh the Emochi page.", "info");
-          return;
-        }
-        updateScrollButton(!!response?.isScrolling);
+    // Bind listener for Auto-Scroll clicks on either page
+    if (pageKind === "chat" || pageKind === "gallery") {
+      autoScrollBtn.addEventListener("click", () => {
+        chrome.tabs.sendMessage(tab.id, { action: "toggle_scroll" }, response => {
+          if (chrome.runtime.lastError) {
+            setStatus("Please refresh the Emochi page.", "info");
+            return;
+          }
+          updateScrollButton(!!response?.isScrolling);
+        });
       });
-    });
+    }
 
+    // Polling content script for UI updates
     setInterval(() => {
       chrome.tabs.sendMessage(tab.id, { action: "get_stats" }, response => {
         if (chrome.runtime.lastError) {
@@ -133,6 +151,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const isGalleryDownloading = !!response?.isGalleryDownloading;
         const selectedGalleryCount = selectedGalleryScope === "favorites" ? favoriteCount : galleryCount;
 
+        // UI Text and Progress handling
         if (isGalleryDownloading) {
           setStatus("Gallery download is running. Keep this page open.", "info");
         } else if (isChatDownloading) {
@@ -149,22 +168,28 @@ document.addEventListener("DOMContentLoaded", () => {
           setStatus("Scroll up in your chat to load messages.", "info");
         }
 
+        // Toggle buttons enablement
         if (dlBtn) dlBtn.disabled = isChatDownloading || chatCount === 0;
         if (galleryDlBtn) {
           galleryDlBtn.disabled = isGalleryDownloading || selectedGalleryCount === 0;
           galleryDlBtn.textContent = isGalleryDownloading ? "Downloading..." : "Download Gallery";
         }
+        
+        // Sync scroll button state
         updateScrollButton(!!response?.isScrolling);
       });
     }, 1000);
 
+    // Click logic for "Download Chat"
     if (dlBtn) {
       dlBtn.addEventListener("click", () => {
         const useZip = document.getElementById("popup-zip-check").checked;
-        chrome.tabs.sendMessage(tab.id, { action: "trigger_download", format: selectedFormat, useZip });
+        const exportAll = document.getElementById("popup-all-check").checked;
+        chrome.tabs.sendMessage(tab.id, { action: "trigger_download", format: selectedFormat, useZip, exportAll });
       });
     }
 
+    // Click logic for "Download Gallery"
     if (galleryDlBtn) {
       galleryDlBtn.addEventListener("click", () => {
         galleryDlBtn.disabled = true;
